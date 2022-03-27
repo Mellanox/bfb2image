@@ -1,0 +1,19 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+#
+#  # Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+pname := bfb2image
+
+%:
+	dh $@
+
+override_dh_auto_install:
+
+	dh_installdirs -p$(pname)  opt/mellanox/bfb2image
+	install -m 0755	src/bfb_to_raw_img.sh      debian/$(pname)/opt/mellanox/bfb2image/bfb_to_raw_img.sh
+	install -m 0755	src/bfb_tool_raw_img.sh    debian/$(pname)/opt/mellanox/bfb2image/bfb_tool_raw_img.sh
+	install -m 0755	src/mlx-mkbfb.py           debian/$(pname)/opt/mellanox/bfb2image/mlx-mkbfb.py
+	install -m 0755	src/Dockerfile             debian/$(pname)/opt/mellanox/bfb2image/Dockerfile
+	install -m 0755	src/qemu-aarch64-static    debian/$(pname)/opt/mellanox/bfb2image/qemu-aarch64-static

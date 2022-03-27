@@ -20,7 +20,7 @@ shopt -s nocasematch
 # The command line help #
 #########################
 function display_help() {
-           echo "Usage: $0 [option...] {start|stop|restart}" >&2
+           echo "Usage: $0 " >&2
            echo
            echo "   -bfb                       The bfb file you want to create an image from"
            echo "   -out                       Output directory for the created image"

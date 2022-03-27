@@ -1,0 +1,12 @@
+Source: bfb2image
+Section: misc
+Priority: optional
+Homepage: https://developer.nvidia.com/networking/doca
+Build-Depends: 
+Standards-Version: 1.0.0
+Maintainer: Emanuel Alkobi <ealkobi@nvidia.com>
+
+Package: bfb2image
+Architecture: all
+Depends: docker
+Description: create an img from a bfb

@@ -5,11 +5,11 @@ This script takes an bfb and create from it a VM image.
 
 **prerequisites**
 
-bfb must be based on Ubuntu OS.
+-bfb must be based on Ubuntu OS.
 
-Docker must be installed to run this script.
+-Docker must be installed to run this script.
 
-Can be used on arm or x86 architecture only
+-Can be used on arm or x86 architecture only
    
 **Usage**
 

@@ -13,9 +13,9 @@ docker must be installed to run this script.
 Usage:
 ./bfb_to_raw_img.sh 
 
-   -bfb                       The bfb file you want to create an image from
+   -bfb                       <The bfb file you want to create an image from>
    
-   -out                       Output directory for the created image
+   -out                       <Output directory for the created image>
    
-   -verbose                   Print info logs during run
+   -verbose                   <Print info logs during run>
 

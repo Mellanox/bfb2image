@@ -9,6 +9,9 @@ Source: %{name}-%{version}.tar.gz
 BuildRoot: %{?build_root:%{build_root}}%{!?build_root:/var/tmp/%{name}-%{version}-root}
 Vendor: Nvidia
 
+# Disable bytecompiling
+%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
+
 %description
 This script takes an bfb and create from it a VM image.
 

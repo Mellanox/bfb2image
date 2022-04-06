@@ -12,6 +12,9 @@ Vendor: Nvidia
 # Disable bytecompiling
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
 
+# Disable .build-id
+%define _build_id_links none
+
 %description
 This script takes an bfb and create from it a VM image.
 

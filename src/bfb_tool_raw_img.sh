@@ -187,6 +187,11 @@ else
 		perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
 fi
 
+#configure network settings
+log "INFO: modify network settings"
+echo -e "  enp1s0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config 
+sed -i '/PasswordAuthentication no/c\PasswordAuthentication yes' mnt/etc/ssh/sshd_config
+
 #unmounting
 log "INFO: unmounting directories"
 umount mnt/proc

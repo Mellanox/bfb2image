@@ -90,19 +90,15 @@ fi
 
 #check that file exist and it is a bfb file
 if [ -f "$bfb" ]; then
-	if [[ $bfb == *.bfb ]]; then
-		if [[ $bfb == *ubuntu* ]]; then
-			log "INFO: starting creating img from $bfb"
-			bfb=`realpath $bfb`
-		else
-			log "ERROR: please provide a bfb with Ubuntu OS"
-		fi
-        else
-	        log "ERROR: please provide a bfb file"
-        	exit
-        fi
-else																				        log "ERROR: file $bfb doesn't exist"										
-  	exit
+    if [[ $bfb == *ubuntu* ]]; then
+        log "INFO: starting creating img from $bfb"
+	bfb=`realpath $bfb`
+    else
+	log "ERROR: please provide a bfb with Ubuntu OS"
+    fi
+else
+    log "ERROR: file $bfb doesn't exist"
+    exit
 fi
 
 cd ${0%*/*}

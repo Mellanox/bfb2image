@@ -98,7 +98,7 @@ kpartx_out=`kpartx -asv $bfb_img`
 BOOT_PARTITION="/dev/mapper/"`echo $kpartx_out | cut -d " " -f 3`
 ROOT_PARTITION="/dev/mapper/"`echo $kpartx_out | cut -d " " -f 12`
 
-if [[ "$BOOT_PARTITION" != *"loop"*  ||  "$BOOT_PARTITION" != *"loop"* ]]; then
+if [[ "$BOOT_PARTITION" != *"loop"*  ||  "$ROOT_PARTITION" != *"loop"* ]]; then
           log "ERROR: there was an error while creating device maps over partitions segments"
 	  kpartx -d $bfb_img
 	  exit 1

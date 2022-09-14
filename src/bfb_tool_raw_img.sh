@@ -151,7 +151,11 @@ else
 	exit 1
 fi
 
+log "INFO: remove unnecessary bfb services"
 chroot mnt systemctl disable bfvcheck.service
+rm -f mnt/etc/systemd/system/networking.service.d/override.conf
+rm -f mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/override.conf
+rm -f mnt/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
 
 #create EFI/ubuntu/grub.cfg
 root='$root'

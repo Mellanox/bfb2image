@@ -126,7 +126,7 @@ tar Jxf $img_tar_path --warning=no-timestamp -C mnt
 if  grep -q "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub; then
 	log "INFO: modify GRUB_CMDLINE_LINUX at etc/default/grub to support vm"
 	GRUB_CMDLINE_LINUX=`grep  "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub`
-	GRUB_CMDLINE_LINUX_MODIFIED=`echo $GRUB_CMDLINE_LINUX| sed s/"console=hvc0"//|sed s/"earlycon=pl011,0x01000000"//|sed s/"quiet"//`
+	GRUB_CMDLINE_LINUX_MODIFIED=`echo $GRUB_CMDLINE_LINUX| sed s/"console=hvc0"//|sed s/"earlycon=pl011,0x01000000"//|sed s/"quiet"/"net.ifnames=0 biosdevname=0"/`
 	sed -i '/GRUB_CMDLINE_LINUX=/d' mnt/etc/default/grub
 	echo $GRUB_CMDLINE_LINUX_MODIFIED >> mnt/etc/default/grub
 fi 
@@ -150,6 +150,9 @@ else
 	log "EROR: grub.cfg was was not created,please check script prerequisites" 
 	exit 1
 fi
+
+chroot mnt systemctl disable bfvcheck.service
+
 #create EFI/ubuntu/grub.cfg
 root='$root'
 prefix='$prefix'
@@ -189,7 +192,7 @@ fi
 
 #configure network settings
 log "INFO: modify network settings"
-echo -e "  enp1s0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config 
+echo -e "  eth0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config
 sed -i '/PasswordAuthentication no/c\PasswordAuthentication yes' mnt/etc/ssh/sshd_config
 
 #unmounting

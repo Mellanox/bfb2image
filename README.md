@@ -1,7 +1,7 @@
 # bfb2image script
 **description**
 
-This script takes an bfb and create from it a VM image.
+This script takes a bfb and creates from it a VM image.
 
 **prerequisites**
 

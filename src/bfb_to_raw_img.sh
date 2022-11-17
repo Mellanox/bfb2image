@@ -82,6 +82,11 @@ else
 	out_path=`realpath $out_path`
 fi
 
+if [ ! -w $out_path ]; then
+    log "ERROR: $out_path doesn't have write permissions. Please use -out flag to choose a directory with write permissions"
+    exit 1
+fi
+
 #check verbose argument
 if [[ "$verbose" != "true"  &&  "$verbose" != "false" ]]; then
         log "ERROR: verbose value can be false or true only"

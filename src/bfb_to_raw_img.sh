@@ -115,7 +115,7 @@ if [ ! -e Dockerfile ]; then
 fi
 
 if ! (which docker > /dev/null 2>&1); then
-		log "docker is required to build BFB"
+		log "ERROR: docker is required to build BFB"
 			exit 1
 fi
 

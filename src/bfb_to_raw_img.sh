@@ -20,66 +20,65 @@ shopt -s nocasematch
 # The command line help #
 #########################
 function display_help() {
-           echo "Usage: $0 " >&2
-           echo
-           echo "   -bfb                       The bfb file you want to create an image from"
-           echo "   -out                       Output directory for the created image"
-           echo "   -verbose                   Print info logs during run"
-           echo
-           echo "   This is a utility script to convert an BFB into a disk image."
-           echo "   Currently works only for Ubuntu OS."
-           exit
+    echo "Usage: $0 " >&2
+    echo
+    echo "   -bfb                       The bfb file you want to create an image from"
+    echo "   -out                       Output directory for the created image"
+    echo "   -verbose                   Print info logs during run"
+    echo
+    echo "   This is a utility script to convert an BFB into a disk image."
+    echo "   Currently works only for Ubuntu OS."
+    exit
 }
 
 #show help
 if [ "$1" == "-h" ]; then
-       display_help
+    display_help
 fi
 
 function log()
 {
-	if [[ $* == *"ERROR"* ]]; then
-		echo "$*"
-		exit 1
-	fi
-	if [ "$verbose" = true ] ; then
-		echo "$*"
+    if [[ $* == *"ERROR"* ]]; then
+        echo "$*"
+        exit 1
+    fi
+        if [ "$verbose" = true ] ; then
+            echo "$*"
 	fi
 }
 
 #parse script arguments
 while [[ $# -gt 0 ]]; do
-	case $1 in
-		-bfb|--bfb)
-		 bfb=$2
-        	 shift # past argument
-	         shift # past value
-        	 ;;
-                -verbose|--verbose) 
-		 verbose=$2
-		 shift
-		 shift
-		 ;;
-	         -out|--out)
-		 out_path=$2
-		 shift # past argument
-		 shift # past value
-		 ;;
-	         *|-*)
-        	 log "ERROR: unknown option $1"
-	         exit 1
-        	 ;;
-	        *)
-	esac																	
+    case $1 in
+        -bfb|--bfb)
+            bfb=$2
+            shift # past argument
+            shift # past value
+            ;;
+        -verbose|--verbose)
+            verbose=$2
+            shift
+            shift
+            ;;
+        -out|--out)
+            out_path=$2
+            shift # past argument
+            shift # past value
+            ;;
+        *|-*)
+            log "ERROR: unknown option $1"
+            exit 1
+            ;;
+        *)
+    esac
 done
-
 
 #check that out_path exists
 if [ ! -d "$out_path" ]; then
-        log "ERROR: $out_path doesn't exist,please provide a directory that exists."
-        exit 1
+    log "ERROR: $out_path doesn't exist,please provide a directory that exists."
+    exit 1
 else
-	out_path=`realpath $out_path`
+    out_path=`realpath $out_path`
 fi
 
 if [ ! -w $out_path ]; then
@@ -89,8 +88,8 @@ fi
 
 #check verbose argument
 if [[ "$verbose" != "true"  &&  "$verbose" != "false" ]]; then
-        log "ERROR: verbose value can be false or true only"
-        exit 1
+    log "ERROR: verbose value can be false or true only"
+    exit 1
 fi
 
 #check that file exist and it is a bfb file
@@ -110,13 +109,13 @@ cd ${0%*/*}
 
 #check Dockerfile exist
 if [ ! -e Dockerfile ]; then
-		log "ERROR: Dockerfile is missing."
-			exit 1
+    log "ERROR: Dockerfile is missing."
+    exit 1
 fi
 
 if ! (which docker > /dev/null 2>&1); then
-		log "ERROR: docker is required to build BFB"
-			exit 1
+    log "ERROR: docker is required to build BFB"
+    exit 1
 fi
 
 #create working directory
@@ -125,28 +124,28 @@ bfb_basename=`basename $bfb`
 WDIR=/tmp/$bfb_basename$id
 mkdir -p $WDIR
 
-cp	Dockerfile \
-	bfb_tool_raw_img.sh \
-	mlx-mkbfb.py \
-	qemu-aarch64-static \
-	$bfb \
-	$WDIR
+cp    Dockerfile \
+      bfb_tool_raw_img.sh \
+      mlx-mkbfb.py \
+      qemu-aarch64-static \
+      $bfb \
+      $WDIR
 
 if [ $? -ne 0 ]; then
-        log "ERROR: Couldn't copy relevant files to $WDIR"
+    log "ERROR: Couldn't copy relevant files to $WDIR"
 fi
 
 cd $WDIR
 img_name=create_img_runtime:$id
 
 if [ "`uname -m`" != "aarch64" ]; then
-        log "INFO: add support to run aarch64 continer over different host architecture"
-        if ! (grep -q /usr/bin/qemu-aarch64-static /etc/binfmt.d/qemu-aarch64.conf > /dev/null 2>&1); then
-                cat > /etc/binfmt.d/qemu-aarch64.conf << EOF
-                :qemu-aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7:\xff\xff\xff\xff\xff\xff\xff\xfc\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff:/usr/bin/qemu-aarch64-static:
+    log "INFO: add support to run aarch64 continer over different host architecture"
+    if ! (grep -q /usr/bin/qemu-aarch64-static /etc/binfmt.d/qemu-aarch64.conf > /dev/null 2>&1); then
+        cat > /etc/binfmt.d/qemu-aarch64.conf << EOF
+            :qemu-aarch64:M::\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\xb7:\xff\xff\xff\xff\xff\xff\xff\xfc\xff\xff\xff\xff\xff\xff\xff\xff\xfe\xff\xff:/usr/bin/qemu-aarch64-static:
 EOF
-        fi
-        systemctl restart systemd-binfmt
+    fi
+    systemctl restart systemd-binfmt
 fi
 
 
@@ -156,7 +155,7 @@ docker build -t $img_name \
 	     -f Dockerfile .
 
 if [ $? -ne 0 ]; then
-        log "ERROR: Couldn't build docker image"
+    log "ERROR: Couldn't build docker image"
 fi
 
 #run docker
@@ -169,13 +168,12 @@ docker run -t --rm --privileged -e container=docker \
 	   $img_name ${bfb##*/} $verbose
 
 if [ $? -ne 0 ]; then
-        log "ERROR: Couldn't create successfully VM image"
+    log "ERROR: Couldn't create successfully VM image"
 fi
 
 #copy img to output path
 log "INFO: copy ${bfb_basename%.*}.img to $out_path"
 mv $WDIR/${bfb_basename%.*}.img $out_path
-
 
 log "INFO: removing $WDIR"
 rm $WDIR -rf

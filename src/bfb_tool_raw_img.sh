@@ -53,7 +53,9 @@ initramfs_v0=`realpath $tmp_dir/dump-initramfs-v0`
 
 (cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
 img_tar_path=`realpath $tmp_dir/ubuntu/image.tar.xz`
-
+if [ $? -ne 0 ]; then
+        log "ERROR: $tmp_dir/ubuntu/image.tar.xz can't be found"
+fi
 
 log "INFO: starting creating clean img"
 dd if=/dev/zero of=$bfb_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
@@ -120,6 +122,9 @@ mount -t vfat $BOOT_PARTITION mnt/boot/efi
 #copy image.tar to root partition
 log "INFO: copying extracted image.tar.xz to root partition"
 tar Jxf $img_tar_path --warning=no-timestamp -C mnt
+if [ $? -ne 0 ]; then
+        log "ERROR: Couldn't extract $img_tar_path"
+fi
 
 
 #modify etc/default/grub to support VM
@@ -147,8 +152,7 @@ mount --bind /sys mnt/sys
 if chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg ; then
 	log "INFO: grub.cfg was successfully created" 
 else
-	log "EROR: grub.cfg was was not created,please check script prerequisites" 
-	exit 1
+	log "ERROR: grub.cfg was was not created,please check script prerequisites"
 fi
 
 log "INFO: remove unnecessary bfb services"

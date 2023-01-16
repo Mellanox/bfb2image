@@ -132,6 +132,10 @@ cp	Dockerfile \
 	$bfb \
 	$WDIR
 
+if [ $? -ne 0 ]; then
+        log "ERROR: Couldn't copy relevant files to $WDIR"
+fi
+
 cd $WDIR
 img_name=create_img_runtime:$id
 
@@ -151,6 +155,10 @@ docker build -t $img_name \
 	     --build-arg  bfb=$bfb_basename \
 	     -f Dockerfile .
 
+if [ $? -ne 0 ]; then
+        log "ERROR: Couldn't build docker image"
+fi
+
 #run docker
 docker run -t --rm --privileged -e container=docker \
 	   -v $PWD:/workspace \
@@ -159,6 +167,10 @@ docker run -t --rm --privileged -e container=docker \
 	   --mount type=bind,source=/sys,target=/sys \
 	   --mount type=bind,source=/proc,target=/proc \
 	   $img_name ${bfb##*/} $verbose
+
+if [ $? -ne 0 ]; then
+        log "ERROR: Couldn't create successfully VM image"
+fi
 
 #copy img to output path
 log "INFO: copy ${bfb_basename%.*}.img to $out_path"

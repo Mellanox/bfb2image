@@ -20,30 +20,30 @@ shopt -s nocasematch
 
 function log()
 {
-	if [[ $* == *"ERROR"* ]]; then
-		echo "$*"
-	        exit 1
-	fi
-	if [ "$verbose" = true ] ; then
-        	echo "$*"
-	fi
+    if [[ $* == *"ERROR"* ]]; then
+        echo "$*"
+        exit 1
+    fi
+    if [ "$verbose" = true ] ; then
+        echo "$*"
+    fi
 }
 
 bfb_img=${bfb%.*}.img
 tmp_dir="img_from_bfb_tmp_"$(date +"%T")
 git_repo="https://github.com/Mellanox/bfscripts.git"
 mkbfb_path=`realpath mlx-mkbfb.py`
+mlnx_bf_configure_path=`realpath mlnx_bf_configure`
 
 #create tmp directory
 if [ ! -d "$tmp_dir" ]; then
-	  mkdir $tmp_dir
+    mkdir $tmp_dir
 fi
 
 #check if mlx-mkbfb.py exist
 if [ ! -e "$mkbfb_path" ]; then
-	log "ERROR: can't find mlx-mkbfb.py script"
-	exit 1
-	#(cd $tmp_dir;git clone $git_repo)
+    log "ERROR: can't find mlx-mkbfb.py script"
+    exit 1
 fi
 
 #execute mkbfb_path
@@ -53,7 +53,9 @@ initramfs_v0=`realpath $tmp_dir/dump-initramfs-v0`
 
 (cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
 img_tar_path=`realpath $tmp_dir/ubuntu/image.tar.xz`
-
+if [ $? -ne 0 ]; then
+    log "ERROR: $tmp_dir/ubuntu/image.tar.xz can't be found"
+fi
 
 log "INFO: starting creating clean img"
 dd if=/dev/zero of=$bfb_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
@@ -99,10 +101,10 @@ BOOT_PARTITION="/dev/mapper/"`echo $kpartx_out | cut -d " " -f 3`
 ROOT_PARTITION="/dev/mapper/"`echo $kpartx_out | cut -d " " -f 12`
 
 if [[ "$BOOT_PARTITION" != *"loop"*  ||  "$ROOT_PARTITION" != *"loop"* ]]; then
-          log "ERROR: there was an error while creating device maps over partitions segments"
-	  kpartx -d $bfb_img
-	  exit 1
+    kpartx -d $bfb_img
+    log "ERROR: there was an error while creating device maps over partitions segments"
 fi
+
 log "INFO: BOOT partition is $BOOT_PARTITION"
 log "INFO: ROOT partition is $ROOT_PARTITION"
 
@@ -120,23 +122,25 @@ mount -t vfat $BOOT_PARTITION mnt/boot/efi
 #copy image.tar to root partition
 log "INFO: copying extracted image.tar.xz to root partition"
 tar Jxf $img_tar_path --warning=no-timestamp -C mnt
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't extract $img_tar_path"
+fi
 
 
 #modify etc/default/grub to support VM
 if  grep -q "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub; then
-	log "INFO: modify GRUB_CMDLINE_LINUX at etc/default/grub to support vm"
-	GRUB_CMDLINE_LINUX=`grep  "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub`
-	GRUB_CMDLINE_LINUX_MODIFIED=`echo $GRUB_CMDLINE_LINUX| sed s/"console=hvc0"//|sed s/"earlycon=pl011,0x01000000"//|sed s/"quiet"//`
-	sed -i '/GRUB_CMDLINE_LINUX=/d' mnt/etc/default/grub
-	echo $GRUB_CMDLINE_LINUX_MODIFIED >> mnt/etc/default/grub
+    log "INFO: modify GRUB_CMDLINE_LINUX at etc/default/grub to support vm"
+    GRUB_CMDLINE_LINUX=`grep  "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub`
+    GRUB_CMDLINE_LINUX_MODIFIED=`echo $GRUB_CMDLINE_LINUX| sed s/"console=hvc0"//|sed s/"earlycon=pl011,0x01000000"//|sed s/"quiet"/"net.ifnames=0 biosdevname=0"/`
+    sed -i '/GRUB_CMDLINE_LINUX=/d' mnt/etc/default/grub
+    echo $GRUB_CMDLINE_LINUX_MODIFIED >> mnt/etc/default/grub
 fi 
 
 #copy qemu-aarch64-static to mounted image
 if [ "`uname -m`" != "aarch64" ]; then
-	        log "INFO: copying /usr/bin/qemu-aarch64-static to mnt/usr/bin/"
-		        cp /usr/bin/qemu-aarch64-static mnt/usr/bin/
+    log "INFO: copying /usr/bin/qemu-aarch64-static to mnt/usr/bin/"
+    cp /usr/bin/qemu-aarch64-static mnt/usr/bin/
 fi
-
 
 #create boot/grub/grub.cfg
 log "INFO: creating grub.cfg"
@@ -145,11 +149,17 @@ mount --bind /proc mnt/proc
 mount --bind /dev mnt/dev
 mount --bind /sys mnt/sys
 if chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg ; then
-	log "INFO: grub.cfg was successfully created" 
+    log "INFO: grub.cfg was successfully created"
 else
-	log "EROR: grub.cfg was was not created,please check script prerequisites" 
-	exit 1
+    log "ERROR: grub.cfg was was not created,please check script prerequisites"
 fi
+
+log "INFO: remove unnecessary bfb services"
+chroot mnt systemctl disable bfvcheck.service
+rm -f mnt/etc/systemd/system/networking.service.d/override.conf
+rm -f mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/override.conf
+rm -f mnt/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
+
 #create EFI/ubuntu/grub.cfg
 root='$root'
 prefix='$prefix'
@@ -171,25 +181,44 @@ EOF
 #set default password
 log "INFO: set deafult password"
 if [ -n "${ubuntu_PASSWORD}" ]; then
-	log "INFO: Changing the default password for user ubuntu"
-	perl -ni -e "if(/^users:/../^runcmd/) {
-		next unless m{^runcmd};
-		print q@users:
-		- name: ubuntu
-		lock_passwd: False
-		groups: [adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video]
-		sudo: ALL=(ALL) NOPASSWD:ALL
-		shell: /bin/bash
-		passwd: $ubuntu_PASSWORD
-		@;
-		print }  else {print}" mnt/var/lib/cloud/seed/nocloud-net/user-data
+    log "INFO: Changing the default password for user ubuntu"
+    perl -ni -e "if(/^users:/../^runcmd/) {
+        next unless m{^runcmd};
+        print q@users:
+        - name: ubuntu
+        lock_passwd: False
+        groups: [adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video]
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        shell: /bin/bash
+        passwd: $ubuntu_PASSWORD
+        @;
+        print }  else {print}" mnt/var/lib/cloud/seed/nocloud-net/user-data
 else
-		perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
+    perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
 fi
+
+#modify mlnx_bf_configure script
+log "INFO: modify mlnx_bf_configure script to support SimX"
+if [ ! -e "$mlnx_bf_configure_path" ]; then
+    log "ERROR: can't find mlnx_bf_configure script"
+    exit 1
+fi
+
+mv mnt/sbin/mlnx_bf_configure mnt/sbin/mlnx_bf_configure.orig
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't modify mlnx_bf_configure original name"
+fi
+
+log "INFO: move $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
+mv $mlnx_bf_configure_path mnt/sbin/mlnx_bf_configure
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't copy $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
+fi
+chmod 777 mnt/sbin/mlnx_bf_configure
 
 #configure network settings
 log "INFO: modify network settings"
-echo -e "  enp1s0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config 
+echo -e "  eth0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config
 sed -i '/PasswordAuthentication no/c\PasswordAuthentication yes' mnt/etc/ssh/sshd_config
 
 #unmounting
@@ -212,5 +241,3 @@ rm $tmp_dir -rf
 
 log "INFO: moving $bfb_img to shared container volume"
 mv $bfb_img /workspace
-
-

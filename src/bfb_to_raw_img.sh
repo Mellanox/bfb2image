@@ -127,6 +127,7 @@ mkdir -p $WDIR
 cp    Dockerfile \
       bfb_tool_raw_img.sh \
       mlx-mkbfb.py \
+      mlnx_bf_configure \
       qemu-aarch64-static \
       $bfb \
       $WDIR

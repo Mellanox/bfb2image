@@ -33,6 +33,7 @@ bfb_img=${bfb%.*}.img
 tmp_dir="img_from_bfb_tmp_"$(date +"%T")
 git_repo="https://github.com/Mellanox/bfscripts.git"
 mkbfb_path=`realpath mlx-mkbfb.py`
+mlnx_bf_configure_path=`realpath mlnx_bf_configure`
 
 #create tmp directory
 if [ ! -d "$tmp_dir" ]; then
@@ -195,6 +196,25 @@ if [ -n "${ubuntu_PASSWORD}" ]; then
 else
     perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
 fi
+
+#modify mlnx_bf_configure script
+log "INFO: modify mlnx_bf_configure script to support SimX"
+if [ ! -e "$mlnx_bf_configure_path" ]; then
+    log "ERROR: can't find mlnx_bf_configure script"
+    exit 1
+fi
+
+mv mnt/sbin/mlnx_bf_configure mnt/sbin/mlnx_bf_configure.orig
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't modify mlnx_bf_configure original name"
+fi
+
+log "INFO: move $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
+mv $mlnx_bf_configure_path mnt/sbin/mlnx_bf_configure
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't copy $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
+fi
+chmod 777 mnt/sbin/mlnx_bf_configure
 
 #configure network settings
 log "INFO: modify network settings"

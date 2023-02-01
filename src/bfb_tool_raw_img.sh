@@ -148,11 +148,14 @@ log "INFO: creating grub.cfg"
 mount --bind /proc mnt/proc
 mount --bind /dev mnt/dev
 mount --bind /sys mnt/sys
-if chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg ; then
-    log "INFO: grub.cfg was successfully created"
-else
+mkconfig_outout=`chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg 2>&1`
+
+if echo $mkconfig_outout | grep "Command failed" ; then
     log "ERROR: grub.cfg was was not created,please check script prerequisites"
+else
+    log "INFO: grub.cfg was successfully created"
 fi
+
 
 log "INFO: remove unnecessary bfb services"
 chroot mnt systemctl disable bfvcheck.service

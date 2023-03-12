@@ -34,6 +34,8 @@ tmp_dir="img_from_bfb_tmp_"$(date +"%T")
 git_repo="https://github.com/Mellanox/bfscripts.git"
 mkbfb_path=`realpath mlx-mkbfb.py`
 mlnx_bf_configure_path=`realpath mlnx_bf_configure`
+mlnx_vf_net_link_name_path=`realpath vf-net-link-name.sh`
+mlnx_bf_udev_path=`realpath mlnx_bf_udev`
 
 #create tmp directory
 if [ ! -d "$tmp_dir" ]; then
@@ -218,6 +220,44 @@ if [ $? -ne 0 ]; then
     log "ERROR: Couldn't copy $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
 fi
 chmod 777 mnt/sbin/mlnx_bf_configure
+
+#modify vf-net-link-name.sh script
+log "INFO: modify vf-net-link-name.sh script to support SimX"
+if [ ! -e "$mlnx_vf_net_link_name_path" ]; then
+    log "ERROR: can't find vf-net-link-name.sh script"
+    exit 1
+fi
+
+mv mnt/etc/infiniband/vf-net-link-name.sh mnt/etc/infiniband/vf-net-link-name.sh.orig
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't modify vf-net-link-name.sh original name"
+fi
+
+log "INFO: move $mlnx_vf_net_link_name_path to mnt/etc/infiniband/vf-net-link-name.sh"
+mv $mlnx_vf_net_link_name_path mnt/etc/infiniband/vf-net-link-name.sh
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't copy $mlnx_vf_net_link_name_path to mnt/etc/infiniband/vf-net-link-name.sh"
+fi
+chmod 777 mnt/etc/infiniband/vf-net-link-name.sh
+
+#modify mlnx_bf_udev script
+log "INFO: modify mlnx_bf_udev script to support SimX"
+if [ ! -e "$mlnx_bf_udev_path" ]; then
+    log "ERROR: can't find mlnx_bf_udev script"
+    exit 1
+fi
+
+mv mnt/lib/udev/mlnx_bf_udev mnt/lib/udev/mlnx_bf_udev.orig
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't modify mlnx_bf_udev original name"
+fi
+
+log "INFO: move $mlnx_bf_udev_path to mnt/lib/udev/mlnx_bf_udev"
+mv $mlnx_bf_udev_path mnt/lib/udev/mlnx_bf_udev
+if [ $? -ne 0 ]; then
+    log "ERROR: Couldn't copy $mlnx_bf_udev_path to mnt/lib/udev/mlnx_bf_udev"
+fi
+chmod 777 mnt/lib/udev/mlnx_bf_udev
 
 #configure network settings
 log "INFO: modify network settings"

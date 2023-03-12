@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# need the PATH for BF ARM lspci to work
+PATH=/opt/mellanox/iproute2/sbin:/opt/mellanox/ethtool/sbin:/bin:/sbin:/usr/bin:/usr/sbin
+echo "mlnx_bf_udev $1" >> /out2
+is_bf=`lspci | grep BlueField | wc -l`
+if [ $is_bf -ne 1 ]; then
+	exit 0
+fi
+
+echo "1" >> /out2
+
+case "$1" in
+	p0|p1)
+	ethtool -L $1 combined 4
+	echo "2" >> /out2
+	;;
+	*)
+
+	echo "3" >> /out2
+	ethtool -L $1 combined 2
+	ethtool -G $1 rx 256
+	;;
+esac
+
+echo "4" >> /out2
+# Bring up only renamed devices
+case "$1" in
+	eth*)
+	echo "5" >> /out2
+	;;
+	*)
+	echo "6" >> /out2
+	ip link set dev $1 up
+	;;
+esac

@@ -128,6 +128,8 @@ cp    Dockerfile \
       bfb_tool_raw_img.sh \
       mlx-mkbfb.py \
       mlnx_bf_configure \
+      vf-net-link-name.sh \
+      mlnx_bf_udev \
       qemu-aarch64-static \
       $bfb \
       $WDIR

@@ -20,6 +20,8 @@ ADD bfb_tool_raw_img.sh .
 ADD $bfb .
 ADD mlx-mkbfb.py .
 ADD mlnx_bf_configure .
+ADD vf-net-link-name.sh .
+ADD mlnx_bf_udev .
 RUN apt-get update -y
 RUN apt-get install -y qemu-user-static
 RUN apt-get install -y python3

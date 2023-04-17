@@ -13,6 +13,7 @@
 
 verbose=false
 out_path=`pwd`
+os="ubuntu"
 #A bash-specific way to do case-insensitive matching
 shopt -s nocasematch
 
@@ -24,6 +25,7 @@ function display_help() {
     echo
     echo "   -bfb                       The bfb file you want to create an image from"
     echo "   -out                       Output directory for the created image"
+    echo "   -os                        OS included in the BFB (ubuntu or centos)"
     echo "   -verbose                   Print info logs during run"
     echo
     echo "   This is a utility script to convert an BFB into a disk image."
@@ -65,6 +67,11 @@ while [[ $# -gt 0 ]]; do
             shift # past argument
             shift # past value
             ;;
+        -os|--os)
+            os=$2
+            shift # past argument
+            shift # past value
+            ;;
         *|-*)
             log "ERROR: unknown option $1"
             exit 1
@@ -94,12 +101,7 @@ fi
 
 #check that file exist and it is a bfb file
 if [ -f "$bfb" ]; then
-    if [[ $bfb == *ubuntu* ]]; then
-        log "INFO: starting creating img from $bfb"
 	bfb=`realpath $bfb`
-    else
-	log "ERROR: please provide a bfb with Ubuntu OS"
-    fi
 else
     log "ERROR: file $bfb doesn't exist"
     exit
@@ -124,8 +126,13 @@ bfb_basename=`basename $bfb`
 WDIR=/tmp/$bfb_basename$id
 mkdir -p $WDIR
 
+if [ "$os" == "centos" ]; then
+    cp bfb_tool_raw_img.centos.sh $WDIR/bfb_tool_raw_img.sh
+else
+    cp bfb_tool_raw_img.sh $WDIR
+fi
+
 cp    Dockerfile \
-      bfb_tool_raw_img.sh \
       mlx-mkbfb.py \
       mlnx_bf_configure \
       vf-net-link-name.sh \

@@ -20,5 +20,7 @@ Usage:
    
    -out                       Output directory for the created image
    
+   -os                        OS included in the BFB (ubuntu or centos)
+
    -verbose                   Print info logs during run
 

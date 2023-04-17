@@ -29,5 +29,6 @@ RUN apt-get install git -y
 RUN apt-get install -y cpio
 RUN apt-get install -y kpartx
 RUN apt-get install -y dosfstools
+RUN apt-get install -y xfsprogs parted uuid-runtime apt-utils
 ENTRYPOINT ["/root/workspace/bfb_tool_raw_img.sh"]
 

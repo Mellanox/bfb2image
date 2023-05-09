@@ -263,6 +263,7 @@ chmod 777 mnt/lib/udev/mlnx_bf_udev
 log "INFO: modify network settings"
 echo -e "  eth0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config
 sed -i '/PasswordAuthentication no/c\PasswordAuthentication yes' mnt/etc/ssh/sshd_config
+echo "PermitRootLogin yes" >> mnt/etc/ssh/sshd_config
 
 #unmounting
 log "INFO: unmounting directories"

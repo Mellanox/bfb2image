@@ -6,17 +6,13 @@ PORT=${1##*f}
 PORT_NAME=`echo ${1} | sed -e "s/c[[:digit:]]\+//"`
 IFINDEX=$3
 
-echo "vf-net-link-name.sh $1 $2 $3" >> /out1
 
 # need the PATH for BF ARM lspci to work
 PATH=/bin:/sbin:/usr/bin:/usr/sbin
-echo "ID_NET_DRIVER $ID_NET_DRIVER" >> /out1 
 
 if [[ "$ID_NET_DRIVER" != *"mlx5"* ]]; then
-    echo "exit 1" >> /out1
-#    exit 1
+    exit 1
 fi
-echo "1" >> /out1
 function get_mh_bf_rep_name() {
         PORT_NM=$1
         IFIDX=$2
@@ -49,18 +45,15 @@ function get_mh_bf_rep_name() {
                  fi
         done
 }
-echo "2" >> /out1
 is_bf=`lspci | grep BlueField | wc -l`
 if [ $is_bf -eq 1 ]; then
         num_of_pf=`lspci 2> /dev/null | grep -w "Ethernet controller: Mellanox Technologies MT42822 BlueField-2" | wc -l`
         if [ $num_of_pf -gt 2 ]; then
                 echo "NAME=`get_mh_bf_rep_name $PORT_NAME $IFINDEX`"
-		echo "exit 2 " >> /out1
                 exit 0
         fi
 
         echo NAME=`echo ${1} | sed -e "s/\(pf[[:digit:]]\+\)$/\1hpf/;s/c[[:digit:]]\+//"`
-	echo "exit 3" >> /out1
         exit 0
 fi
 

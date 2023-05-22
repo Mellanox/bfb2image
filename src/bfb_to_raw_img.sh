@@ -137,6 +137,7 @@ cp    Dockerfile \
       mlnx_bf_configure \
       vf-net-link-name.sh \
       mlnx_bf_udev \
+      92-oob_net.rules \
       qemu-aarch64-static \
       $bfb \
       $WDIR

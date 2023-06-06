@@ -278,23 +278,6 @@ if [ $? -ne 0 ]; then
 	    log "ERROR: Couldn't copy $oob_net_rules to mnt/etc/udev/rules.d/92-oob_net.rules"
 fi
 
-#modify 92-oob_net.rules
-log "INFO: modify 92-oob_net.rules to support SimX $oob_net_rules"
-if [ ! -e "$oob_net_rules" ]; then
-	    log "ERROR: can't find 92-oob_net.rules"
-	        exit 1
-fi
-
-mv mnt/etc/udev/rules.d/92-oob_net.rules mnt/etc/udev/rules.d/92-oob_net.rules.orig
-if [ $? -ne 0 ]; then
-	    log "ERROR: Couldn't 92-oob_net.rules original name"
-fi
-
-log "INFO: move $oob_net_rules to mnt/etc/udev/rules.d/92-oob_net.rules"
-mv $oob_net_rules mnt/etc/udev/rules.d/92-oob_net.rules
-if [ $? -ne 0 ]; then
-	    log "ERROR: Couldn't copy $oob_net_rules to mnt/etc/udev/rules.d/92-oob_net.rules"
-fi
 chmod 644 mnt/etc/udev/rules.d/92-oob_net.rules
 
 #configure network settings

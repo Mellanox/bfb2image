@@ -60,7 +60,7 @@ if [ $num_of_devs -eq 0 ]; then
     exit 0
 fi
 
-/sbin/mlnx-sf --action create --device 0000:01:00.0 --sfnum 0 --hwaddr 02:f4:d4:b3:a0:fe
+/sbin/mlnx-sf --action create --device 0000:03:00.0 --sfnum 0 --hwaddr 02:f4:d4:b3:a0:fe
 
 
 vsctl=`which ovs-vsctl 2> /dev/null`
@@ -70,7 +70,7 @@ if [ ! -n "$vsctl" ]; then
 fi
 
 OVS_BRIDGE1=${OVS_BRIDGE1:-"ovsbr1"}
-OVS_BRIDGE1_PORTS=${OVS_BRIDGE1_PORTS:-"p0 pf0hpf en1f0pf0sf0"}
+OVS_BRIDGE1_PORTS=${OVS_BRIDGE1_PORTS:-"p0 pf0hpf en3f0pf0sf0"}
 OVS_HW_OFFLOAD=${OVS_HW_OFFLOAD:-"yes"}
 OVS_TIMEOUT=${OVS_TIMEOUT:-30}
 

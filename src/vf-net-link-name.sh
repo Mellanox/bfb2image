@@ -1,5 +1,4 @@
 #!/bin/bash
-
 SWID=$2
 # might be pf0vf1 so only get vf number
 PORT=${1##*f}
@@ -45,7 +44,8 @@ function get_mh_bf_rep_name() {
                  fi
         done
 }
-is_bf=`lspci | grep BlueField | wc -l`
+is_bf=`lspci -s 00:00.0 2> /dev/null | grep -wq "PCI bridge: Mellanox Technologies" && echo 1 || echo 0`
+
 if [ $is_bf -eq 1 ]; then
         num_of_pf=`lspci 2> /dev/null | grep -w "Ethernet controller: Mellanox Technologies MT42822 BlueField-2" | wc -l`
         if [ $num_of_pf -gt 2 ]; then

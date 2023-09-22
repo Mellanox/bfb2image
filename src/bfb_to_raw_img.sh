@@ -134,10 +134,8 @@ fi
 
 cp    Dockerfile \
       mlx-mkbfb.py \
-      mlnx_bf_configure \
-      vf-net-link-name.sh \
-      mlnx_bf_udev \
-      92-oob_net.rules \
+      config-sf \
+      mlnx-sf.conf \
       qemu-aarch64-static \
       $bfb \
       $WDIR

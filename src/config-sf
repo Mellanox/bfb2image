@@ -1,0 +1,24 @@
+#!/bin/bash
+
+prog=`basename $0`
+
+PID=$(pgrep -oxf "/bin/bash /sbin/$prog" \
+   || pgrep -oxf "/bin/bash /usr/sbin/$prog" \
+   || pgrep -oxf "/usr/bin/bash /sbin/$prog" \
+   || pgrep -oxf "/usr/bin/bash /usr/sbin/$prog")
+if [ $$ -ne $PID ] ; then
+        # $prog is running already with PID: $PID
+        exit 0
+fi
+
+mkdir -p /etc/mellanox
+: > /etc/mellanox/mlnx-sf.conf
+
+for pciid in $(lspci -nD 2> /dev/null | grep 15b3:a2d[26c] | awk '{print $1}')
+do
+	cat >> /etc/mellanox/mlnx-sf.conf << EOF
+/sbin/mlnx-sf --action create --device $pciid --sfnum 0 --hwaddr $(uuidgen | sed -e 's/-//;s/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
+EOF
+done
+
+/bin/rm -f /etc/modprobe.d/mlnx-sf.conf

@@ -1,19 +1,30 @@
 #!/bin/bash
 
+###############################################################################
 #
-# Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES, ALL RIGHTS RESERVED.
+# Copyright 2023 NVIDIA Corporation
 #
-# This software product is a proprietary product of NVIDIA CORPORATION &
-# AFFILIATES (the "Company") and all right, title, and interest in and to the
-# software product, including all associated intellectual property rights, are
-# and shall remain exclusively with the Company.
+# Permission is hereby granted, free of charge, to any person obtaining a copy of
+# this software and associated documentation files (the "Software"), to deal in
+# the Software without restriction, including without limitation the rights to
+# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+# the Software, and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
 #
-# This software product is governed by the End User License Agreement
-# provided with the software product.
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
 #
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#
+###############################################################################
 
 CHROOT_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-bfb=`realpath $1`
+bfb=$(realpath $1)
 verbose=$2
 #A bash-specific way to do case-insensitive matching
 shopt -s nocasematch
@@ -31,12 +42,7 @@ function log()
 
 bfb_img=${bfb%.*}.img
 tmp_dir="img_from_bfb_tmp_"$(date +"%T")
-git_repo="https://github.com/Mellanox/bfscripts.git"
-mkbfb_path=`realpath mlx-mkbfb.py`
-mlnx_bf_configure_path=`realpath mlnx_bf_configure`
-mlnx_vf_net_link_name_path=`realpath vf-net-link-name.sh`
-mlnx_bf_udev_path=`realpath mlnx_bf_udev`
-oob_net_rules=`realpath 92-oob_net.rules`
+mkbfb_path=$(realpath mlx-mkbfb.py)
 
 #create tmp directory
 if [ ! -d "$tmp_dir" ]; then
@@ -52,17 +58,17 @@ fi
 #execute mkbfb_path
 (cd $tmp_dir;$mkbfb_path -x $bfb)
 
-initramfs_v0=`realpath $tmp_dir/dump-initramfs-v0`
+initramfs_v0=$(realpath $tmp_dir/dump-initramfs-v0)
 
 (cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
-img_tar_path=`realpath $tmp_dir/ubuntu/image.tar.xz`
+img_tar_path=$(realpath $tmp_dir/ubuntu/image.tar.xz)
 if [ $? -ne 0 ]; then
     log "ERROR: $tmp_dir/ubuntu/image.tar.xz can't be found"
 fi
 
 log "INFO: starting creating clean img"
 dd if=/dev/zero of=$bfb_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
-bfb_img=`realpath $bfb_img`
+bfb_img=$(realpath $bfb_img)
 log "INFO: starting creating partitions"
 bs=512
 reserved=34
@@ -74,8 +80,8 @@ giga=$((2**30))
 MIN_DISK_SIZE4DUAL_BOOT=$((16*$giga)) #16GB
 common_size_bytes=$((10*$giga))
 
-disk_sectors=`fdisk -l $bfb_img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $7}'`
-disk_size=`fdisk -l $bfb+img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $5}'`
+disk_sectors=$(fdisk -l $bfb_img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $7}')
+disk_size=$(fdisk -l $bfb+img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $5}')
 disk_end=$((disk_sectors - reserved))
 
 boot_start=$start_reserved
@@ -97,11 +103,11 @@ EOF
 ) >/dev/null 2>&1
 
 #create device maps over partitions segments
-kpartx_out=`kpartx -asv $bfb_img`
+kpartx_out=$(kpartx -asv $bfb_img)
 
 #format partitions
-BOOT_PARTITION="/dev/mapper/"`echo $kpartx_out | cut -d " " -f 3`
-ROOT_PARTITION="/dev/mapper/"`echo $kpartx_out | cut -d " " -f 12`
+BOOT_PARTITION="/dev/mapper/"$(echo $kpartx_out | cut -d " " -f 3)
+ROOT_PARTITION="/dev/mapper/"$(echo $kpartx_out | cut -d " " -f 12)
 
 if [[ "$BOOT_PARTITION" != *"loop"*  ||  "$ROOT_PARTITION" != *"loop"* ]]; then
     kpartx -d $bfb_img
@@ -129,18 +135,11 @@ if [ $? -ne 0 ]; then
     log "ERROR: Couldn't extract $img_tar_path"
 fi
 
-
-#modify etc/default/grub to support VM
-if  grep -q "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub; then
-    log "INFO: modify GRUB_CMDLINE_LINUX at etc/default/grub to support vm"
-    GRUB_CMDLINE_LINUX=`grep  "GRUB_CMDLINE_LINUX=" mnt/etc/default/grub`
-    GRUB_CMDLINE_LINUX_MODIFIED=`echo $GRUB_CMDLINE_LINUX| sed s/"console=hvc0"//|sed s/"earlycon=pl011,0x01000000"//|sed s/"quiet"/"net.ifnames=0 biosdevname=0"/`
-    sed -i '/GRUB_CMDLINE_LINUX=/d' mnt/etc/default/grub
-    echo $GRUB_CMDLINE_LINUX_MODIFIED >> mnt/etc/default/grub
-fi 
+mv config-sf mnt/sbin
+mv mlnx-sf.conf mnt/etc/modprobe.d
 
 #copy qemu-aarch64-static to mounted image
-if [ "`uname -m`" != "aarch64" ]; then
+if [ "$(uname -m)" != "aarch64" ]; then
     log "INFO: copying /usr/bin/qemu-aarch64-static to mnt/usr/bin/"
     cp /usr/bin/qemu-aarch64-static mnt/usr/bin/
 fi
@@ -151,7 +150,8 @@ log "INFO: creating grub.cfg"
 mount --bind /proc mnt/proc
 mount --bind /dev mnt/dev
 mount --bind /sys mnt/sys
-mkconfig_outout=`chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg 2>&1`
+sed -i -r -e 's/earlycon=[^ ]* //g' mnt/etc/default/grub
+mkconfig_outout=$(chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg 2>&1)
 
 if echo $mkconfig_outout | grep "Command failed" ; then
     log "ERROR: grub.cfg was was not created,please check script prerequisites"
@@ -159,18 +159,18 @@ else
     log "INFO: grub.cfg was successfully created"
 fi
 
-
-log "INFO: remove unnecessary bfb services"
-chroot mnt systemctl disable bfvcheck.service
-rm -f mnt/etc/systemd/system/networking.service.d/override.conf
-rm -f mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/override.conf
-rm -f mnt/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
-
+###
+### log "INFO: remove unnecessary bfb services"
+### chroot mnt systemctl disable bfvcheck.service
+### rm -f mnt/etc/systemd/system/networking.service.d/override.conf
+### rm -f mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/override.conf
+### rm -f mnt/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
+###
 #create EFI/ubuntu/grub.cfg
 root='$root'
 prefix='$prefix'
-root_uuid=`blkid -p $ROOT_PARTITION | grep -oP ' UUID=[0-9a-zA-Z"-]+' |cut -d '"' -f2`
-boot_uuid=`blkid -p $BOOT_PARTITION | grep -oP ' UUID=[0-9a-zA-Z"-]+' |cut -d '"' -f2`
+root_uuid=$(blkid -p $ROOT_PARTITION | grep -oP ' UUID=[0-9a-zA-Z"-]+' |cut -d '"' -f2)
+boot_uuid=$(blkid -p $BOOT_PARTITION | grep -oP ' UUID=[0-9a-zA-Z"-]+' |cut -d '"' -f2)
 cat >mnt/boot/efi/EFI/ubuntu/grub.cfg << EOF
 search.fs_uuid $root_uuid root
 set prefix=($root)'/boot/grub'
@@ -203,88 +203,6 @@ else
     perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
 fi
 
-#modify mlnx_bf_configure script
-log "INFO: modify mlnx_bf_configure script to support SimX"
-if [ ! -e "$mlnx_bf_configure_path" ]; then
-    log "ERROR: can't find mlnx_bf_configure script"
-    exit 1
-fi
-
-mv mnt/sbin/mlnx_bf_configure mnt/sbin/mlnx_bf_configure.orig
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't modify mlnx_bf_configure original name"
-fi
-
-log "INFO: move $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
-mv $mlnx_bf_configure_path mnt/sbin/mlnx_bf_configure
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't copy $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
-fi
-chmod 755 mnt/sbin/mlnx_bf_configure
-
-#modify vf-net-link-name.sh script
-log "INFO: modify vf-net-link-name.sh script to support SimX"
-if [ ! -e "$mlnx_vf_net_link_name_path" ]; then
-    log "ERROR: can't find vf-net-link-name.sh script"
-    exit 1
-fi
-
-mv mnt/etc/infiniband/vf-net-link-name.sh mnt/etc/infiniband/vf-net-link-name.sh.orig
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't modify vf-net-link-name.sh original name"
-fi
-
-log "INFO: move $mlnx_vf_net_link_name_path to mnt/etc/infiniband/vf-net-link-name.sh"
-mv $mlnx_vf_net_link_name_path mnt/etc/infiniband/vf-net-link-name.sh
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't copy $mlnx_vf_net_link_name_path to mnt/etc/infiniband/vf-net-link-name.sh"
-fi
-chmod 755 mnt/etc/infiniband/vf-net-link-name.sh
-
-#modify mlnx_bf_udev script
-log "INFO: modify mlnx_bf_udev script to support SimX"
-if [ ! -e "$mlnx_bf_udev_path" ]; then
-    log "ERROR: can't find mlnx_bf_udev script"
-    exit 1
-fi
-
-mv mnt/lib/udev/mlnx_bf_udev mnt/lib/udev/mlnx_bf_udev.orig
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't modify mlnx_bf_udev original name"
-fi
-
-log "INFO: move $mlnx_bf_udev_path to mnt/lib/udev/mlnx_bf_udev"
-mv $mlnx_bf_udev_path mnt/lib/udev/mlnx_bf_udev
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't copy $mlnx_bf_udev_path to mnt/lib/udev/mlnx_bf_udev"
-fi
-chmod 755 mnt/lib/udev/mlnx_bf_udev
-
-#modify 92-oob_net.rules
-log "INFO: modify 92-oob_net.rules to support SimX $oob_net_rules"
-if [ ! -e "$oob_net_rules" ]; then
-	    log "ERROR: can't find 92-oob_net.rules"
-	        exit 1
-fi
-
-mv mnt/etc/udev/rules.d/92-oob_net.rules mnt/etc/udev/rules.d/92-oob_net.rules.orig
-if [ $? -ne 0 ]; then
-	    log "ERROR: Couldn't 92-oob_net.rules original name"
-fi
-
-log "INFO: move $oob_net_rules to mnt/etc/udev/rules.d/92-oob_net.rules"
-mv $oob_net_rules mnt/etc/udev/rules.d/92-oob_net.rules
-if [ $? -ne 0 ]; then
-	    log "ERROR: Couldn't copy $oob_net_rules to mnt/etc/udev/rules.d/92-oob_net.rules"
-fi
-
-chmod 644 mnt/etc/udev/rules.d/92-oob_net.rules
-
-#configure network settings
-log "INFO: modify network settings"
-echo -e "  eth0:\n    dhcp4: true   " >> mnt/var/lib/cloud/seed/nocloud-net/network-config
-sed -i '/PasswordAuthentication no/c\PasswordAuthentication yes' mnt/etc/ssh/sshd_config
-echo "PermitRootLogin yes" >> mnt/etc/ssh/sshd_config
 
 #unmounting
 log "INFO: unmounting directories"

@@ -19,10 +19,8 @@ ADD bfb_tool_raw_img.sh .
 
 ADD $bfb .
 ADD mlx-mkbfb.py .
-ADD mlnx_bf_configure .
-ADD vf-net-link-name.sh .
-ADD mlnx_bf_udev .
-ADD 92-oob_net.rules .
+ADD config-sf .
+ADD mlnx-sf.conf .
 RUN apt-get update -y
 RUN apt-get install -y qemu-user-static
 RUN apt-get install -y python3

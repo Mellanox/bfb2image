@@ -144,6 +144,11 @@ if [ "$(uname -m)" != "aarch64" ]; then
     cp /usr/bin/qemu-aarch64-static mnt/usr/bin/
 fi
 
+#update sshd configuration
+perl -ni -e 'print unless /PasswordAuthentication no/' mnt/etc/ssh/sshd_config
+echo "PasswordAuthentication yes" >> mnt/etc/ssh/sshd_config
+echo "PermitRootLogin yes" >> mnt/etc/ssh/sshd_config
+
 #create boot/grub/grub.cfg
 log "INFO: creating grub.cfg"
 

@@ -126,6 +126,10 @@ bfb_basename=`basename $bfb`
 WDIR=/tmp/$bfb_basename$id
 mkdir -p $WDIR
 
+if (echo $bfb | grep -iq centos); then
+    os="centos"
+fi
+
 if [ "$os" == "centos" ]; then
     cp bfb_tool_raw_img.centos.sh $WDIR/bfb_tool_raw_img.sh
 else

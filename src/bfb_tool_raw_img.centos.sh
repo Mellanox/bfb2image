@@ -2,7 +2,7 @@
 
 ###############################################################################
 #
-# Copyright 2020 NVIDIA Corporation
+# Copyright 2023 NVIDIA Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
@@ -82,7 +82,6 @@ bfb_img=${bfb%.*}.img
 tmp_dir="img_from_bfb_tmp_"$(date +"%T")
 git_repo="https://github.com/Mellanox/bfscripts.git"
 mkbfb_path=`realpath mlx-mkbfb.py`
-mlnx_bf_configure_path=`realpath mlnx_bf_configure`
 
 #create tmp directory
 if [ ! -d "$tmp_dir" ]; then
@@ -159,6 +158,9 @@ echo "Extracting /..."
 tar Jxf $img_tar_path --warning=no-timestamp -C /mnt
 sync
 
+mv config-sf /mnt/sbin
+mv mlnx-sf.conf /mnt/etc/modprobe.d
+
 #copy qemu-aarch64-static to mounted image
 if [ "`uname -m`" != "aarch64" ]; then
     log "INFO: copying /usr/bin/qemu-aarch64-static to mnt/usr/bin/"
@@ -222,18 +224,6 @@ else
     kver=$(/bin/ls -1 /mnt/lib/modules/ | head -1)
 fi
 
-mv /mnt/sbin/mlnx_bf_configure /mnt/sbin/mlnx_bf_configure.orig
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't modify mlnx_bf_configure original name"
-fi
-
-log "INFO: move $mlnx_bf_configure_path to /mnt/sbin/mlnx_bf_configure"
-mv $mlnx_bf_configure_path /mnt/sbin/mlnx_bf_configure
-if [ $? -ne 0 ]; then
-    log "ERROR: Couldn't copy $mlnx_bf_configure_path to mnt/sbin/mlnx_bf_configure"
-fi
-chmod +x /mnt/sbin/mlnx_bf_configure
-
 # Network configuration
 cat > /mnt/etc/sysconfig/network-scripts/ifcfg-br0 << EOF
 NAME="br0"
@@ -257,22 +247,6 @@ EOF
 
 
 echo centos | chroot /mnt passwd root --stdin
-
-if [ -x /usr/bin/uuidgen ]; then
-	UUIDGEN=/usr/bin/uuidgen
-else
-	UUIDGEN=/mnt/usr/bin/uuidgen
-fi
-
-p0m0_uuid=`$UUIDGEN`
-p0m0_mac=`echo ${p0m0_uuid} | sed -e 's/-//;s/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/'`
-
-mkdir -p /mnt/etc/mellanox
-cat > /mnt/etc/mellanox/mlnx-sf.conf << 'EOF'
-/sbin/mlnx-sf --action create --device $(lspci -nD 2> /dev/null | grep 15b3:a2d[26c] | awk '{print $1}' | head -1) --sfnum 0 --hwaddr mac_iname
-EOF
-
-sed -i -e "s/mac_iname/${p0m0_mac}/" /mnt/etc/mellanox/mlnx-sf.conf
 
 mkdir -p /mnt/etc/dhcp
 cat >> /mnt/etc/dhcp/dhclient.conf << EOF

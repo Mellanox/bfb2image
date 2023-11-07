@@ -44,6 +44,9 @@ bfb_img=${bfb%.*}.img
 tmp_dir="img_from_bfb_tmp_"$(date +"%T")
 mkbfb_path=$(realpath mlx-mkbfb.py)
 
+# Set the default password for ubuntu user to 'nvidia'
+ubuntu_PASSWORD=${ubuntu_PASSWORD:-'$1$TIMsY7oM$JI0G7/LJ9hKRkhSwByxF71'}
+
 #create tmp directory
 if [ ! -d "$tmp_dir" ]; then
     mkdir $tmp_dir
@@ -190,22 +193,21 @@ EOF
 
 
 #set default password
-log "INFO: set deafult password"
 if [ -n "${ubuntu_PASSWORD}" ]; then
-    log "INFO: Changing the default password for user ubuntu"
-    perl -ni -e "if(/^users:/../^runcmd/) {
-        next unless m{^runcmd};
-        print q@users:
-        - name: ubuntu
-        lock_passwd: False
-        groups: [adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video]
-        sudo: ALL=(ALL) NOPASSWD:ALL
-        shell: /bin/bash
-        passwd: $ubuntu_PASSWORD
-        @;
-        print }  else {print}" mnt/var/lib/cloud/seed/nocloud-net/user-data
+		log "INFO: Changing the default password for user ubuntu"
+		perl -ni -e "if(/^users:/../^runcmd/) {
+						next unless m{^runcmd};
+		print q@users:
+  - name: ubuntu
+    lock_passwd: False
+    groups: adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    passwd: $ubuntu_PASSWORD
+@;
+		print } else {print}" mnt/var/lib/cloud/seed/nocloud-net/user-data
 else
-    perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
+		perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
 fi
 
 
@@ -228,4 +230,5 @@ rm $tmp_dir -rf
 #move img file to shared container volume
 
 log "INFO: moving $bfb_img to shared container volume"
+log "INFO: The default password for user ubuntu is 'nvidia'"
 mv $bfb_img /workspace

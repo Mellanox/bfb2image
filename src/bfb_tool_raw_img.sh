@@ -210,6 +210,8 @@ else
 		perl -ni -e "print unless /plain_text_passwd/" mnt/var/lib/cloud/seed/nocloud-net/user-data
 fi
 
+# Increase openibd timeout to support multiple devices
+sed -r -i -e "s/(TimeoutSec=).*/\118000/" mnt/lib/systemd/system/openibd.service
 
 #unmounting
 log "INFO: unmounting directories"

@@ -176,6 +176,9 @@ fi
 ### rm -f mnt/etc/systemd/system/systemd-networkd-wait-online.service.d/override.conf
 ### rm -f mnt/etc/systemd/system/NetworkManager-wait-online.service.d/override.conf
 ###
+
+rm -f mnt/etc/systemd/system/multi-user.target.wants/set_emu_param.service
+
 #create EFI/ubuntu/grub.cfg
 root='$root'
 prefix='$prefix'

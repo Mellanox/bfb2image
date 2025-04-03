@@ -84,7 +84,7 @@ MIN_DISK_SIZE4DUAL_BOOT=$((16*$giga)) #16GB
 common_size_bytes=$((10*$giga))
 
 disk_sectors=$(fdisk -l $bfb_img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $7}')
-disk_size=$(fdisk -l $bfb+img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $5}')
+disk_size=$(fdisk -l $bfb_img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $5}')
 disk_end=$((disk_sectors - reserved))
 
 boot_start=$start_reserved
@@ -159,6 +159,8 @@ mount --bind /proc mnt/proc
 mount --bind /dev mnt/dev
 mount --bind /sys mnt/sys
 sed -i -r -e 's/earlycon=[^ ]* //g' mnt/etc/default/grub
+
+chroot /mnt env PATH=$CHROOT_PATH /usr/sbin/grub-install ${bfb_img}
 mkconfig_outout=$(chroot mnt env PATH=$CHROOT_PATH /usr/sbin/grub-mkconfig -o /boot/grub/grub.cfg 2>&1)
 
 if echo $mkconfig_outout | grep "Command failed" ; then

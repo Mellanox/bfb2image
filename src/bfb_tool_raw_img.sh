@@ -217,6 +217,17 @@ fi
 # Increase openibd timeout to support multiple devices
 sed -r -i -e "s/(TimeoutSec=).*/\118000/" mnt/lib/systemd/system/openibd.service
 
+# Ubuntu 24.04
+if [[ "$(grep -oP '(?<=VERSION_ID=).*' mnt/etc/os-release | tr -d '"')" == "24.04" ]]; then
+    # A workaround for the AppArmor issue with an incorrect path to nm-dhcp-helper is
+    # to update the profile to allow the correct path.
+    # https://bugs.launchpad.net/ubuntu/+source/isc-dhcp/+bug/2064007
+    log "Ubuntu 24.04: Add a workaround for the AppArmor issue"
+    sed -i -e "s@/usr/lib/NetworkManager/nm-dhcp-helper@/usr/libexec/nm-dhcp-helper@g" mnt/etc/apparmor.d/sbin.dhclient
+    log "Put the dhclient profile in disable mode"
+    ln -s /etc/apparmor.d/sbin.dhclient mnt/etc/apparmor.d/disable/
+fi
+
 #unmounting
 log "INFO: unmounting directories"
 umount mnt/proc

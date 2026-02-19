@@ -178,10 +178,6 @@ fi
 rm -f mnt/etc/systemd/system/multi-user.target.wants/set_emu_param.service
 rm -f mnt/etc/systemd/system/multi-user.target.wants/mlx_ipmid.service
 
-# Disable Collectx (dpeserver) on Air/simx image to enchance performance, not needed for perf/counters there
-log "INFO: disabling Collectx (dpeserver) service for simx/Air image"
-chroot mnt systemctl disable dpeserver.service 2>/dev/null
-
 #create EFI/ubuntu/grub.cfg
 root='$root'
 prefix='$prefix'
@@ -220,6 +216,13 @@ fi
 
 # Increase openibd timeout to support multiple devices
 sed -r -i -e "s/(TimeoutSec=).*/\118000/" mnt/lib/systemd/system/openibd.service
+
+# WA: set DTS telemetry update=0 in config for simx/Air image
+DTS_CONFIG="mnt/opt/mellanox/doca/services/telemetry/config/dts_config.ini"
+if [ -f "$DTS_CONFIG" ]; then
+	log "INFO: applying DTS workaround: update=0 in dts_config.ini"
+	sed -i 's/^update=[0-9]*/update=0/' "$DTS_CONFIG"
+fi
 
 # Ubuntu 24.04
 if [[ "$(grep -oP '(?<=VERSION_ID=).*' mnt/etc/os-release | tr -d '"')" == "24.04" ]]; then

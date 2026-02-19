@@ -178,6 +178,12 @@ fi
 rm -f mnt/etc/systemd/system/multi-user.target.wants/set_emu_param.service
 rm -f mnt/etc/systemd/system/multi-user.target.wants/mlx_ipmid.service
 
+# Disable Collectx (dpeserver) on Air/simx image - saves memory; not needed for perf/counters there
+# MAHMOUD CHANGE
+log "INFO: disabling Collectx (dpeserver) service for simx/Air image"
+chroot mnt systemctl disable dpeserver.service 2>/dev/null || true
+chroot mnt systemctl mask dpeserver.service 2>/dev/null || true
+
 #create EFI/ubuntu/grub.cfg
 root='$root'
 prefix='$prefix'

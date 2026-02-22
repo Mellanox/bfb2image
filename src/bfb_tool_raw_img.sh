@@ -217,11 +217,13 @@ fi
 # Increase openibd timeout to support multiple devices
 sed -r -i -e "s/(TimeoutSec=).*/\118000/" mnt/lib/systemd/system/openibd.service
 
-# WA: set DTS telemetry update=0 in config for simx/Air image
-DTS_CONFIG="mnt/opt/mellanox/doca/services/telemetry/config/dts_config.ini"
-if [ -f "$DTS_CONFIG" ]; then
-	log "INFO: applying DTS workaround: update=0 in dts_config.ini"
-	sed -i 's/^update=[0-9]*/update=0/' "$DTS_CONFIG"
+# WA: DTS for simx/Air - copy DTS yaml to /etc/kubelet.d.disabled/ so kubelet does not load it
+IMPORT_DOCA_TELEMETRY="mnt/opt/mellanox/doca/services/telemetry/import_doca_telemetry.sh"
+if [ -f "$IMPORT_DOCA_TELEMETRY" ]; then
+	sed -i -e 's|/etc/kubelet\.d/|/etc/kubelet.d.disabled/|g' "$IMPORT_DOCA_TELEMETRY"
+	# ensure script creates .disabled dir before cp (insert mkdir -p before the cp line if needed)
+	sed -i -e '\|/etc/kubelet.d.disabled/|s|^ex cp|ex mkdir -p /etc/kubelet.d.disabled \&\& ex cp|' "$IMPORT_DOCA_TELEMETRY"
+	log "INFO: DTS workaround: DTS yaml will be copied to /etc/kubelet.d.disabled/ (not loaded by kubelet)"
 fi
 
 # Ubuntu 24.04

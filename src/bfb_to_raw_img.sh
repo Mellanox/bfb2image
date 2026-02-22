@@ -182,15 +182,14 @@ docker run -t --rm --privileged -e container=docker \
 
 if [ $? -ne 0 ]; then
     log "ERROR: Couldn't create successfully VM image"
+    exit 1
 fi
 
 #copy img to output path
 log "INFO: copy ${bfb_basename%.*}.img to $out_path"
 mv $WDIR/${bfb_basename%.*}.img $out_path
-
 log "INFO: removing $WDIR"
 rm $WDIR -rf
-
 log "INFO: removing image create_img_runtime_$id"
 docker image rm $img_name
 

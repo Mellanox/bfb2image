@@ -217,6 +217,14 @@ fi
 # Increase openibd timeout to support multiple devices
 sed -r -i -e "s/(TimeoutSec=).*/\118000/" mnt/lib/systemd/system/openibd.service
 
+# WA: DTS for simx/Air - comment out the line that copies DTS yaml to /etc/kubelet.d/ so kubelet does not load it and DTS is disabled
+# to enable DTS, uncomment the line that copies DTS yaml to /etc/kubelet.d/ and re run the script
+IMPORT_DOCA_TELEMETRY="mnt/opt/mellanox/doca/services/telemetry/import_doca_telemetry.sh"
+if [ -f "$IMPORT_DOCA_TELEMETRY" ]; then
+	sed -i -e '\|ex cp.*/etc/kubelet\.d/|s|^|# |' "$IMPORT_DOCA_TELEMETRY"
+	log "INFO: DTS workaround: commented out 'ex cp ... /etc/kubelet.d/' (DTS yaml not loaded by kubelet)"
+fi
+
 # Ubuntu 24.04
 if [[ "$(grep -oP '(?<=VERSION_ID=).*' mnt/etc/os-release | tr -d '"')" == "24.04" ]]; then
     # A workaround for the AppArmor issue with an incorrect path to nm-dhcp-helper is

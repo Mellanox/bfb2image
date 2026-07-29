@@ -20,7 +20,7 @@ ADD bfb_tool_raw_img.sh .
 ADD $bfb .
 ADD mlx-mkbfb.py .
 ADD config-sf .
-ADD mlnx-sf.conf .
+ADD config-sf.service .
 RUN apt-get update -y
 RUN apt-get install -y qemu-user-static
 RUN apt-get install -y python3

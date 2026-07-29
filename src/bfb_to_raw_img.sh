@@ -139,7 +139,7 @@ fi
 cp    Dockerfile \
       mlx-mkbfb.py \
       config-sf \
-      mlnx-sf.conf \
+      config-sf.service \
       qemu-aarch64-static \
       $bfb \
       $WDIR

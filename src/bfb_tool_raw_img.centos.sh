@@ -159,7 +159,9 @@ tar Jxf $img_tar_path --warning=no-timestamp -C /mnt
 sync
 
 mv config-sf /mnt/sbin
-mv mlnx-sf.conf /mnt/etc/modprobe.d
+mv config-sf.service /mnt/lib/systemd/system
+mkdir -p /mnt/etc/systemd/system/sysinit.target.wants
+ln -snf /lib/systemd/system/config-sf.service /mnt/etc/systemd/system/sysinit.target.wants/config-sf.service
 
 #copy qemu-aarch64-static to mounted image
 if [ "`uname -m`" != "aarch64" ]; then

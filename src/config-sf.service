@@ -1,0 +1,15 @@
+[Unit]
+Description=Generate BlueField SF configuration
+Documentation=file:/etc/mellanox/mlnx-sf.conf
+DefaultDependencies=no
+After=local-fs.target
+Before=openibd.service rdma-load-modules@rdma.service
+ConditionPathExists=!/etc/mellanox/mlnx-sf.conf
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/sbin/config-sf
+
+[Install]
+WantedBy=sysinit.target

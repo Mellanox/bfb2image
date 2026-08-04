@@ -213,6 +213,11 @@ cat > /mnt/etc/dracut.conf.d/vm.conf << EOF
 add_drivers+=" libiscsi virtio_blk loop null_blk virtio_console "
 EOF
 
+# ib_core is omitted so that it is not loaded before switch_root, to ensure the mlnx-sf modprobe hook runs.
+cat > /mnt/etc/dracut.conf.d/no-ib_core.conf << EOF
+omit_drivers+=" ib_core "
+EOF
+
 kdir=$(/bin/ls -1d /mnt/lib/modules/4.18* /mnt/lib/modules/4.19* /mnt/lib/modules/4.20* /mnt/lib/modules/5.* 2> /dev/null)
 kver=""
 if [ -n "$kdir" ]; then
@@ -220,6 +225,10 @@ if [ -n "$kdir" ]; then
     DRACUT_CMD=`chroot /mnt /bin/ls -1 /sbin/dracut /usr/bin/dracut 2> /dev/null | head -n 1 | tr -d '\n'`
     chroot /mnt /usr/sbin/grub2-set-default 0
     chroot /mnt $DRACUT_CMD --kver ${kver} --force /boot/initramfs-${kver}.img
+
+    if (chroot /mnt lsinitrd /boot/initramfs-${kver}.img 2> /dev/null | grep -q "ib_core\.ko"); then
+        log "ERROR: ib_core is still present in /boot/initramfs-${kver}.img"
+    fi
 else
     kver=$(/bin/ls -1 /mnt/lib/modules/ | head -1)
 fi

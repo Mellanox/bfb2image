@@ -167,6 +167,24 @@ else
     log "INFO: grub.cfg was successfully created"
 fi
 
+# ib_core is omitted so that it is not loaded before switch_root, to ensure the mlnx-sf modprobe hook runs.
+mkdir -p mnt/etc/dracut.conf.d
+cat > mnt/etc/dracut.conf.d/no-ib_core.conf << EOF
+omit_drivers+=" ib_core "
+EOF
+
+# rebuild the initramfs without ib_core.
+kver=$(/bin/ls -1 mnt/lib/modules/ | tail -1)
+log "INFO: rebuilding the initramfs without ib_core"
+dracut_output=$(chroot mnt env PATH=$CHROOT_PATH dracut --kver $kver --rebuild /boot/initrd.img 2>&1)
+if [ $? -ne 0 ]; then
+    log "ERROR: initramfs was not created: $dracut_output"
+fi
+
+if (chroot mnt env PATH=$CHROOT_PATH lsinitrd /boot/initrd.img 2> /dev/null | grep -q "ib_core\.ko"); then
+    log "ERROR: ib_core is still present in the initramfs"
+fi
+
 ###
 ### log "INFO: remove unnecessary bfb services"
 ### chroot mnt systemctl disable bfvcheck.service

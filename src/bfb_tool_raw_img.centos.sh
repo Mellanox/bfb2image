@@ -25,7 +25,7 @@
 
 PATH="/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/mellanox/scripts"
 
-bfb=`realpath $1`
+src=`realpath $1`
 verbose=$2
 #A bash-specific way to do case-insensitive matching
 shopt -s nocasematch
@@ -78,8 +78,8 @@ if [ "${FACTORY_DEFAULT_DHCP_BEHAVIOR}" == "true" ]; then
 	DHCP_CLASS_ID_DP="NVIDIA/BF/DP"
 fi
 
-bfb_img=${bfb%.*}.img
-tmp_dir="img_from_bfb_tmp_"$(date +"%T")
+raw_img=${src%.*}.img
+tmp_dir="raw_img_tmp_"$(date +"%T")
 git_repo="https://github.com/Mellanox/bfscripts.git"
 mkbfb_path=`realpath mlx-mkbfb.py`
 
@@ -88,30 +88,46 @@ if [ ! -d "$tmp_dir" ]; then
     mkdir $tmp_dir
 fi
 
-#check if mlx-mkbfb.py exist
-if [ ! -e "$mkbfb_path" ]; then
-    log "ERROR: can't find mlx-mkbfb.py script"
-    exit 1
+# The OS filesystem tarball ships inside an initramfs: a BFB keeps it in its
+# "initramfs-v0" section, while an ISO built from that BFB stores the very same
+# initramfs as a plain file. Both sources therefore expand to the same layout,
+# and only the way to get hold of the initramfs differs.
+if [[ "$src" == *.iso ]]; then
+    initrd_path=`isoinfo -i $src -R -f | grep initrd`
+    if [ -z "$initrd_path" ]; then
+        log "ERROR: no initramfs found inside $src"
+    fi
+
+    log "INFO: extracting $initrd_path from $src"
+    (cd $tmp_dir;isoinfo -i "$src" -R -x "$initrd_path"|zcat|cpio -i)> /dev/null 2>&1
+else
+    #check if mlx-mkbfb.py exist
+    if [ ! -e "$mkbfb_path" ]; then
+        log "ERROR: can't find mlx-mkbfb.py script"
+    fi
+
+    #execute mkbfb_path
+    (cd $tmp_dir;$mkbfb_path -x $src)
+
+    initramfs_v0=`realpath $tmp_dir/dump-initramfs-v0`
+
+    log "INFO: extracting the initramfs from $src"
+    (cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
 fi
 
-#execute mkbfb_path
-(cd $tmp_dir;$mkbfb_path -x $bfb)
-
-initramfs_v0=`realpath $tmp_dir/dump-initramfs-v0`
-
-(cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
-img_tar_path=`realpath $tmp_dir/*/image.tar.xz`
-if [ $? -ne 0 ]; then
+img_tar_path=`echo $tmp_dir/*/image.tar.xz`
+if [ ! -f "$img_tar_path" ]; then
     log "ERROR: OS filesystem tarball image.tar.xz can't be found under $tmp_dir"
 fi
+img_tar_path=`realpath $img_tar_path`
 
 log "INFO: starting creating clean img"
-dd if=/dev/zero of=$bfb_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
-bfb_img=`realpath $bfb_img`
+dd if=/dev/zero of=$raw_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
+raw_img=`realpath $raw_img`
 log "INFO: $distro installation started"
 
 # Create the CentOS partitions.
-parted --script $bfb_img -- \
+parted --script $raw_img -- \
 	mklabel gpt \
 	mkpart primary 1MiB 201MiB set 1 esp on \
 	mkpart primary 201MiB 100%
@@ -119,21 +135,21 @@ parted --script $bfb_img -- \
 sync
 
 #create device maps over partitions segments
-kpartx_out=`kpartx -asv $bfb_img`
+kpartx_out=`kpartx -asv $raw_img`
 
 #format partitions
-BOOT_PARTITION="/dev/mapper/$(kpartx -asv $bfb_img | grep -o loop.p1)"
-ROOT_PARTITION="/dev/mapper/$(kpartx -asv $bfb_img | grep -o loop.p2)"
+BOOT_PARTITION="/dev/mapper/$(kpartx -asv $raw_img | grep -o loop.p1)"
+ROOT_PARTITION="/dev/mapper/$(kpartx -asv $raw_img | grep -o loop.p2)"
 
 if [[ "$BOOT_PARTITION" != *"loop"*  ||  "$ROOT_PARTITION" != *"loop"* ]]; then
-    kpartx -d $bfb_img
+    kpartx -d $raw_img
     log "ERROR: there was an error while creating device maps over partitions segments"
 fi
 
 log "INFO: BOOT partition is $BOOT_PARTITION"
 log "INFO: ROOT partition is $ROOT_PARTITION"
 
-partprobe "$bfb_img"
+partprobe "$raw_img"
 
 sleep 1
 
@@ -292,7 +308,7 @@ umount /mnt
 sync
 
 log "INFO: saving img file with changes"
-kpartx -d $bfb_img> /dev/null 2>&1
+kpartx -d $raw_img> /dev/null 2>&1
 
 echo
 echo "ROOT PASSWORD is \"centos\""
@@ -309,5 +325,5 @@ log "INFO: removing temp directories"
 
 #move img file to shared container volume
 
-log "INFO: moving $bfb_img to shared container volume"
-mv $bfb_img /workspace
+log "INFO: moving $raw_img to shared container volume"
+mv $raw_img /workspace

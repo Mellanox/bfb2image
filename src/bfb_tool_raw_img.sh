@@ -24,7 +24,7 @@
 ###############################################################################
 
 CHROOT_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-bfb=$(realpath $1)
+src=$(realpath $1)
 verbose=$2
 #A bash-specific way to do case-insensitive matching
 shopt -s nocasematch
@@ -40,8 +40,8 @@ function log()
     fi
 }
 
-bfb_img=${bfb%.*}.img
-tmp_dir="img_from_bfb_tmp_"$(date +"%T")
+raw_img=${src%.*}.img
+tmp_dir="raw_img_tmp_"$(date +"%T")
 mkbfb_path=$(realpath mlx-mkbfb.py)
 
 # Set the default password for ubuntu user to 'nvidia'
@@ -52,26 +52,42 @@ if [ ! -d "$tmp_dir" ]; then
     mkdir $tmp_dir
 fi
 
-#check if mlx-mkbfb.py exist
-if [ ! -e "$mkbfb_path" ]; then
-    log "ERROR: can't find mlx-mkbfb.py script"
-    exit 1
+# The OS filesystem tarball ships inside an initramfs: a BFB keeps it in its
+# "initramfs-v0" section, while an ISO built from that BFB stores the very same
+# initramfs as a plain file. Both sources therefore expand to the same layout,
+# and only the way to get hold of the initramfs differs.
+if [[ "$src" == *.iso ]]; then
+    initrd_path=$(isoinfo -i $src -R -f | grep initrd)
+    if [ -z "$initrd_path" ]; then
+        log "ERROR: no initramfs found inside $src"
+    fi
+
+    log "INFO: extracting $initrd_path from $src"
+    (cd $tmp_dir;isoinfo -i "$src" -R -x "$initrd_path"|zcat|cpio -i)> /dev/null 2>&1
+else
+    #check if mlx-mkbfb.py exist
+    if [ ! -e "$mkbfb_path" ]; then
+        log "ERROR: can't find mlx-mkbfb.py script"
+    fi
+
+    #execute mkbfb_path
+    (cd $tmp_dir;$mkbfb_path -x $src)
+
+    initramfs_v0=$(realpath $tmp_dir/dump-initramfs-v0)
+
+    log "INFO: extracting the initramfs from $src"
+    (cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
 fi
 
-#execute mkbfb_path
-(cd $tmp_dir;$mkbfb_path -x $bfb)
-
-initramfs_v0=$(realpath $tmp_dir/dump-initramfs-v0)
-
-(cd $tmp_dir;zcat $initramfs_v0|cpio -i)> /dev/null 2>&1
-img_tar_path=$(realpath $tmp_dir/ubuntu/image.tar.xz)
-if [ $? -ne 0 ]; then
-    log "ERROR: $tmp_dir/ubuntu/image.tar.xz can't be found"
+img_tar_path=$tmp_dir/ubuntu/image.tar.xz
+if [ ! -f "$img_tar_path" ]; then
+    log "ERROR: $img_tar_path can't be found"
 fi
+img_tar_path=$(realpath $img_tar_path)
 
 log "INFO: starting creating clean img"
-dd if=/dev/zero of=$bfb_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
-bfb_img=$(realpath $bfb_img)
+dd if=/dev/zero of=$raw_img iflag=fullblock bs=1M count=10000 > /dev/null 2>&1
+raw_img=$(realpath $raw_img)
 log "INFO: starting creating partitions"
 bs=512
 reserved=34
@@ -83,8 +99,8 @@ giga=$((2**30))
 MIN_DISK_SIZE4DUAL_BOOT=$((16*$giga)) #16GB
 common_size_bytes=$((10*$giga))
 
-disk_sectors=$(fdisk -l $bfb_img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $7}')
-disk_size=$(fdisk -l $bfb_img 2> /dev/null | grep "Disk $bfb_img:" | awk '{print $5}')
+disk_sectors=$(fdisk -l $raw_img 2> /dev/null | grep "Disk $raw_img:" | awk '{print $7}')
+disk_size=$(fdisk -l $raw_img 2> /dev/null | grep "Disk $raw_img:" | awk '{print $5}')
 disk_end=$((disk_sectors - reserved))
 
 boot_start=$start_reserved
@@ -93,27 +109,27 @@ root_start=$(($boot_start + $boot_size))
 root_end=$disk_end
 root_size=$(($root_end - $root_start + 1))
 (
-sfdisk -f "$bfb_img" << EOF
+sfdisk -f "$raw_img" << EOF
 label: gpt
 label-id: A2DF9E70-6329-4679-9C1F-1DAF38AE25AE
-device: ${bfb_img}
+device: ${raw_img}
 unit: sectors
 first-lba: $reserved
 last-lba: $disk_end
-${bfb_img}p1 : start=$boot_start, size=$boot_size, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name="EFI System", bootable
-${bfb_img}p2 : start=$root_start ,size=$root_size, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="writable"
+${raw_img}p1 : start=$boot_start, size=$boot_size, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B, name="EFI System", bootable
+${raw_img}p2 : start=$root_start ,size=$root_size, type=0FC63DAF-8483-4772-8E79-3D69D8477DE4, name="writable"
 EOF
 ) >/dev/null 2>&1
 
 #create device maps over partitions segments
-kpartx_out=$(kpartx -asv $bfb_img)
+kpartx_out=$(kpartx -asv $raw_img)
 
 #format partitions
 BOOT_PARTITION="/dev/mapper/"$(echo $kpartx_out | cut -d " " -f 3)
 ROOT_PARTITION="/dev/mapper/"$(echo $kpartx_out | cut -d " " -f 12)
 
 if [[ "$BOOT_PARTITION" != *"loop"*  ||  "$ROOT_PARTITION" != *"loop"* ]]; then
-    kpartx -d $bfb_img
+    kpartx -d $raw_img
     log "ERROR: there was an error while creating device maps over partitions segments"
 fi
 
@@ -251,6 +267,7 @@ if [[ "$(grep -oP '(?<=VERSION_ID=).*' mnt/etc/os-release | tr -d '"')" == "24.0
     log "Ubuntu 24.04: Add a workaround for the AppArmor issue"
     sed -i -e "s@/usr/lib/NetworkManager/nm-dhcp-helper@/usr/libexec/nm-dhcp-helper@g" mnt/etc/apparmor.d/sbin.dhclient
     log "Put the dhclient profile in disable mode"
+    mkdir -p mnt/etc/apparmor.d/disable
     ln -s /etc/apparmor.d/sbin.dhclient mnt/etc/apparmor.d/disable/
 fi
 
@@ -264,7 +281,7 @@ umount mnt
 
 #save chango "INFO: saving to image device maps over paritions
 log "INFO: saving img file with changes"
-kpartx -d $bfb_img> /dev/null 2>&1
+kpartx -d $raw_img> /dev/null 2>&1
 
 log "INFO: removing temp directories"
 rm mnt -rf
@@ -272,6 +289,6 @@ rm $tmp_dir -rf
 
 #move img file to shared container volume
 
-log "INFO: moving $bfb_img to shared container volume"
+log "INFO: moving $raw_img to shared container volume"
 log "INFO: The default password for user ubuntu is 'nvidia'"
-mv $bfb_img /workspace
+mv $raw_img /workspace

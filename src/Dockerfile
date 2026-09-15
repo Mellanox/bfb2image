@@ -11,13 +11,13 @@
 #
 
 FROM ubuntu:20.04
-ARG bfb
+ARG src
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /root/workspace
 VOLUME ["/workspace"]
 ADD bfb_tool_raw_img.sh .
 
-ADD $bfb .
+ADD $src .
 ADD mlx-mkbfb.py .
 ADD config-sf .
 ADD mlnx-sf.conf .
@@ -26,6 +26,7 @@ RUN apt-get install -y qemu-user-static
 RUN apt-get install -y python3
 RUN apt-get install git -y
 RUN apt-get install -y cpio
+RUN apt-get install -y genisoimage
 RUN apt-get install -y kpartx
 RUN apt-get install -y dosfstools
 RUN apt-get install -y xfsprogs parted uuid-runtime apt-utils

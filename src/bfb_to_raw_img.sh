@@ -24,11 +24,13 @@ function display_help() {
     echo "Usage: $0 " >&2
     echo
     echo "   -bfb                       The bfb file you want to create an image from"
+    echo "   -iso                       The iso file you want to create an image from"
     echo "   -out                       Output directory for the created image"
-    echo "   -os                        OS included in the BFB (ubuntu or centos)"
+    echo "   -os                        OS included in the BFB/ISO (ubuntu or centos)"
     echo "   -verbose                   Print info logs during run"
     echo
-    echo "   This is a utility script to convert an BFB into a disk image."
+    echo "   This is a utility script to convert a BFB or an ISO into a disk image."
+    echo "   Exactly one of -bfb and -iso must be given."
     echo "   Currently works only for Ubuntu OS."
     exit
 }
@@ -54,6 +56,11 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         -bfb|--bfb)
             bfb=$2
+            shift # past argument
+            shift # past value
+            ;;
+        -iso|--iso)
+            iso=$2
             shift # past argument
             shift # past value
             ;;
@@ -99,11 +106,22 @@ if [[ "$verbose" != "true"  &&  "$verbose" != "false" ]]; then
     exit 1
 fi
 
-#check that file exist and it is a bfb file
-if [ -f "$bfb" ]; then
-	bfb=`realpath $bfb`
+#pick the source image, either a bfb or an iso but not both
+if [ -n "$bfb" ] && [ -n "$iso" ]; then
+    log "ERROR: -bfb and -iso are mutually exclusive"
+elif [ -n "$bfb" ]; then
+    src=$bfb
+elif [ -n "$iso" ]; then
+    src=$iso
 else
-    log "ERROR: file $bfb doesn't exist"
+    log "ERROR: no source image given, please use either -bfb or -iso"
+fi
+
+#check that the source image exists
+if [ -f "$src" ]; then
+	src=`realpath $src`
+else
+    log "ERROR: file $src doesn't exist"
     exit
 fi
 
@@ -116,17 +134,17 @@ if [ ! -e Dockerfile ]; then
 fi
 
 if ! (which docker > /dev/null 2>&1); then
-    log "ERROR: docker is required to build BFB"
+    log "ERROR: docker is required to create the image"
     exit 1
 fi
 
 #create working directory
 id=$$
-bfb_basename=`basename $bfb`
-WDIR=/tmp/$bfb_basename$id
+src_basename=`basename $src`
+WDIR=/tmp/$src_basename$id
 mkdir -p $WDIR
 
-if (echo $bfb | grep -iq centos); then
+if (echo $src | grep -iq centos); then
     os="centos"
 fi
 
@@ -141,7 +159,7 @@ cp    Dockerfile \
       config-sf \
       mlnx-sf.conf \
       qemu-aarch64-static \
-      $bfb \
+      $src \
       $WDIR
 
 if [ $? -ne 0 ]; then
@@ -164,7 +182,8 @@ fi
 
 #build docker
 docker build -t $img_name \
-	     --build-arg  bfb=$bfb_basename \
+	     --progress=plain \
+	     --build-arg  src=$src_basename \
 	     -f Dockerfile .
 
 if [ $? -ne 0 ]; then
@@ -178,15 +197,15 @@ docker run -t --rm --privileged -e container=docker \
 	   --mount type=bind,source=/dev,target=/dev \
 	   --mount type=bind,source=/sys,target=/sys \
 	   --mount type=bind,source=/proc,target=/proc \
-	   $img_name ${bfb##*/} $verbose
+	   $img_name ${src##*/} $verbose
 
 if [ $? -ne 0 ]; then
     log "ERROR: Couldn't create successfully VM image"
 fi
 
 #copy img to output path
-log "INFO: copy ${bfb_basename%.*}.img to $out_path"
-mv $WDIR/${bfb_basename%.*}.img $out_path
+log "INFO: copy ${src_basename%.*}.img to $out_path"
+mv -f $WDIR/${src_basename%.*}.img $out_path
 
 log "INFO: removing $WDIR"
 rm $WDIR -rf
@@ -194,5 +213,5 @@ rm $WDIR -rf
 log "INFO: removing image create_img_runtime_$id"
 docker image rm $img_name
 
-log "INFO: script finish running successfully, ${bfb_basename%.*}.img is ready"
+log "INFO: script finish running successfully, ${src_basename%.*}.img is ready"
 

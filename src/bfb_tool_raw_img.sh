@@ -144,8 +144,17 @@ sync
 #create directory before mounting
 mkdir -p mnt
 mount -t ext4 $ROOT_PARTITION mnt
+if [ $? -ne 0 ] || ! mountpoint -q mnt; then
+    kpartx -d $raw_img > /dev/null 2>&1
+    log "ERROR: failed to mount $ROOT_PARTITION on mnt"
+fi
 mkdir -p mnt/boot/efi
 mount -t vfat $BOOT_PARTITION mnt/boot/efi
+if [ $? -ne 0 ] || ! mountpoint -q mnt/boot/efi; then
+    umount mnt > /dev/null 2>&1
+    kpartx -d $raw_img > /dev/null 2>&1
+    log "ERROR: failed to mount $BOOT_PARTITION on mnt/boot/efi"
+fi
 
 #copy image.tar to root partition
 log "INFO: copying extracted image.tar.xz to root partition"

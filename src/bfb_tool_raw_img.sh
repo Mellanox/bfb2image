@@ -41,7 +41,7 @@ function log()
 }
 
 raw_img=${src%.*}.img
-tmp_dir="raw_img_tmp_"$(date +"%T")
+tmp_dir="raw_img_tmp_"$(date +"%T").$$
 mkbfb_path=$(realpath mlx-mkbfb.py)
 
 # Set the default password for ubuntu user to 'nvidia'

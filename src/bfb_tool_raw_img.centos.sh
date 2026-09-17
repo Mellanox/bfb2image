@@ -79,7 +79,7 @@ if [ "${FACTORY_DEFAULT_DHCP_BEHAVIOR}" == "true" ]; then
 fi
 
 raw_img=${src%.*}.img
-tmp_dir="raw_img_tmp_"$(date +"%T")
+tmp_dir="raw_img_tmp_"$(date +"%T").$$
 git_repo="https://github.com/Mellanox/bfscripts.git"
 mkbfb_path=`realpath mlx-mkbfb.py`
 
